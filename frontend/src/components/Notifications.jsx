@@ -1,9 +1,12 @@
-import React from 'react'
-
+import React from 'react';
+/**
+ * Notification Component
+ * @return {ReactComponent}
+ */
 export default function Notifications() {
-    return (
-        <div>
-            Notifications
-        </div>
-    )
+  return (
+    <div>
+      Notifications
+    </div>
+  );
 }

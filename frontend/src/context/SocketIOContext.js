@@ -21,23 +21,35 @@ const ContextProvider = ({children}) => {
   const [callEnded, setCallEnded] = useState(false);
   const [currentUserName, setCurrentUserName] = useState('');
 
-  const currentUserVideo = useRef();
-  const externalUserVideo = useRef();
-  const connectionRef = useRef();
+  const currentUserVideo = useRef(null);
+  const externalUserVideo = useRef(null);
+  const connectionRef = useRef(null);
 
   useEffect(() => {
     /**
          * Gets video and audio stream from user, asks for permissions.
          * Sets the webcam stream to ref object
          */
-    navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    })
-        .then((mediaStream) => {
-          setCurrentUserStream(mediaStream);
-          currentUserVideo.current.srcObject = mediaStream;
-        });
+    const getUserMedia = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(
+            {video: true, audio: true},
+        );
+        setCurrentUserStream(stream);
+        currentUserVideo.current.srcObject = stream;
+      } catch (err) {
+        console.log(err);
+      }
+    };
+    getUserMedia();
+    // navigator.mediaDevices.getUserMedia({
+    //   video: true,
+    //   audio: true,
+    // })
+    //     .then((mediaStream) => {
+    //       setCurrentUserStream(mediaStream);
+    //       currentUserVideo.current.srcObject = mediaStream;
+    //     });
 
     /**
          * Retrieve current user id from socket
