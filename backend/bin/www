@@ -29,13 +29,13 @@ io.on('connect', (socket) => {
   /**
    * Inform participants that user has joined
    */
-  socket.emit('me', socket.id);
+  socket.emit('currentUser', socket.id);
 
   /**
-   * Initiate a call to user
+   * Initiate a call to user()
    */
-  socket.on('calluser', (userToCall, signalData, from, name) => {
-    io.to(userToCall).emit('calluser', { signal: signalData, from, name });
+  socket.on('initiateCall', (userToCall, signalData, from, name) => {
+    io.to(userToCall).emit('initiateCall', {signal: signalData, from, name});
   });
 
   /**
@@ -54,8 +54,9 @@ io.on('connect', (socket) => {
 });
 /**
  * Normalize a port into a number, string, or false.
+ * @param {number} val The port to normalize.
+ * @return {number} the normalized port or false if failure.
  */
-
 function normalizePort(val) {
   const port = parseInt(val, 10);
 
@@ -96,16 +97,16 @@ server.on('listening', onListening);
 
 /**
  * Event listener for HTTP server "error" event.
+ * @param {object} error an error to process.
  */
-
 function onError(error) {
   if (error.syscall !== 'listen') {
     throw error;
   }
 
-  const bind = typeof port === 'string'
-    ? `Pipe ${port}`
-    : `Port ${port}`;
+  const bind = typeof port === 'string' ?
+    `Pipe ${port}` :
+    `Port ${port}`;
 
   // handle specific listen errors with friendly messages
   switch (error.code) {
@@ -125,11 +126,10 @@ function onError(error) {
 /**
  * Event listener for HTTP server "listening" event.
  */
-
 function onListening() {
   const addr = server.address();
-  const bind = typeof addr === 'string'
-    ? `pipe ${addr}`
-    : `port ${addr.port}`;
+  const bind = typeof addr === 'string' ?
+    `pipe ${addr}` :
+    `port ${addr.port}`;
   debug(`Listening on ${bind}`);
 }
