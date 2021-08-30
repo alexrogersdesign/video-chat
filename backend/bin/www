@@ -3,29 +3,33 @@
 /**
  * Module dependencies.
  */
-
 const debug = require('debug')('video-chat:server');
 const http = require('http');
 const cors = require('cors');
 
+const app = require('../app');
+/**
+ * Create HTTP server.
+ */
+const server = http.createServer(app);
+
 /**
  * Setup cors to allow all origins with GET, POST requests
  */
-const io = require('socket.io')(http, {
+const io = require('socket.io')(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],
   },
 });
 
-const app = require('../app');
-
 app.use(cors());
+http.createServer(app);
 
 /**
  * Setup socket connection behaviors
  */
-io.on('connect', (socket) => {
+io.on('connection', (socket) => {
   /**
    * Inform participants that user has joined
    */
@@ -34,15 +38,16 @@ io.on('connect', (socket) => {
   /**
    * Initiate a call to user()
    */
-  socket.on('initiateCall', (userToCall, signalData, from, name) => {
-    io.to(userToCall).emit('initiateCall', {signal: signalData, from, name});
+  socket.on('callUser', ({userToCall, signalData, from, name}) => {
+    console.log(userToCall);
+    io.to(userToCall).emit('callUser', {signal: signalData, from, name});
   });
 
   /**
    * Accept a call from another user
    */
-  socket.on('answercall', (data) => {
-    io.to(data).emit('answercall', data.signal);
+  socket.on('answerCall', (data) => {
+    io.to(data.to).emit('answerCall', data.signal);
   });
 
   /**
@@ -50,6 +55,9 @@ io.on('connect', (socket) => {
    */
   socket.on('close', () => {
     socket.broadcast.emit('endcall');
+  });
+  socket.on('connect_error', (err) => {
+    console.log(`connect_error due to ${err.message}`);
   });
 });
 /**
@@ -80,15 +88,8 @@ const port = normalizePort(process.env.PORT || '5000');
 app.set('port', port);
 
 /**
- * Create HTTP server.
- */
-
-const server = http.createServer(app);
-
-/**
  * Listen on provided port, on all network interfaces.
  */
-
 server.listen(port);
 // eslint-disable-next-line no-use-before-define
 server.on('error', onError);

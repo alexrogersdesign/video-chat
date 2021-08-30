@@ -14,7 +14,7 @@ const SocketIOContext = createContext();
 const socket = io('http://localhost:5000');
 
 const ContextProvider = ({children}) => {
-  const [currentUserStream, setCurrentUserStream] = useState(null);
+  const [stream, setStream] = useState(null);
   const [currentUser, setCurrentUser] = useState('');
   const [call, setCall] = useState({});
   const [callAccepted, setCallAccepted] = useState(false);
@@ -30,26 +30,26 @@ const ContextProvider = ({children}) => {
          * Gets video and audio stream from user, asks for permissions.
          * Sets the webcam stream to ref object
          */
-    const getUserMedia = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(
-            {video: true, audio: true},
-        );
-        setCurrentUserStream(stream);
-        currentUserVideo.current.srcObject = stream;
-      } catch (err) {
-        console.log(err);
-      }
-    };
-    getUserMedia();
-    // navigator.mediaDevices.getUserMedia({
-    //   video: true,
-    //   audio: true,
-    // })
-    //     .then((mediaStream) => {
-    //       setCurrentUserStream(mediaStream);
-    //       currentUserVideo.current.srcObject = mediaStream;
-    //     });
+    // const getUserMedia = async () => {
+    //   try {
+    //     const stream = await navigator.mediaDevices.getUserMedia(
+    //         {video: true, audio: true},
+    //     );
+    //     setCurrentUserStream(stream);
+    //     currentUserVideo.current.srcObject = stream;
+    //   } catch (err) {
+    //     console.log(err);
+    //   }
+    // };
+    // getUserMedia();
+    navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    })
+        .then((stream) => {
+          setStream(stream);
+          currentUserVideo.current.srcObject = stream;
+        });
 
     /**
          * Retrieve current user id from socket
@@ -61,10 +61,12 @@ const ContextProvider = ({children}) => {
          * name - name of external user who is calling
          * from - who the call is coming from
          * signal - quality of the call
-         * isReceivedCall - whether a call is being received or being answered
+         * isReceivingCall - whether a call is being received or being answered
          */
-    socket.on('callexternaluser', ({from, name: callerName, signal}) => {
-      setCall({isReceivedCall: true, from, name: callerName, signal});
+    socket.on('callUser', ({from, name: callerName, signal}) => {
+      console.log('signal', signal);
+      setCall({isReceivingCall: true, from, name: callerName, signal});
+      console.log('call2', call);
     });
   }, []);
 
@@ -74,28 +76,33 @@ const ContextProvider = ({children}) => {
     /**
          * A peer object representing the current user
          */
-    const peer = new Peer({intiator: false, trickle: false, currentUserStream});
+    const peer = new Peer({
+      initiator: false, trickle: false, currentUserStream: stream,
+    });
 
     /**
          * Eventhandler for when a signal event is recieved from WebRTC
          */
     peer.on('signal', (data) => {
-      socket.emit('answercall', {signal: data, externalUser: call.from});
+      console.log('call3', call);
+
+      socket.emit('answerCall', {signal: data, to: call.from});
     });
 
     /**
          * Eventhandler for when a stream is recieved from WebRTC
          * then stores stream in ref
          */
-    peer.on('stream', (externalUserStream) => {
-      externalUserVideo.current.srcObject = externalUserStream;
+    peer.on('stream', (stream) => {
+      console.log('stream');
+      externalUserVideo.current.srcObject = stream;
     });
 
     /**
          * Set peer call signal quality
          */
     peer.signal(call.signal);
-
+    console.log('call4', call);
     /**
          * Sets peer to the current connection
          */
@@ -106,14 +113,17 @@ const ContextProvider = ({children}) => {
     /**
          * A peer object representing the current user
          */
-    const peer = new Peer({intiator: true, trickle: false, currentUserStream});
-
+    const peer = new Peer({initiator: true, trickle: false, stream});
+    console.log('current user stream', stream);
+    console.log('call', call);
     /**
          * Eventhandler for when a signal event is recieved from WebRTC
          */
     peer.on('signal', (data) => {
-      socket.emit('initiatecall',
-          {externalUser: id,
+      console.log('data', data);
+
+      socket.emit('callUser',
+          {userToCall: id,
             signalData: data,
             from: currentUser,
             currentUserName});
@@ -123,16 +133,15 @@ const ContextProvider = ({children}) => {
          * Eventhandler for when an external user stream is recieved from WebRTC
          * then stores stream in ref
          */
-    peer.on('stream', (externalUserStream) => {
-      externalUserVideo.current.srcObject = externalUserStream;
+    peer.on('stream', (stream) => {
+      externalUserVideo.current.srcObject = stream;
     });
     /**
      * Socket eventhandler for an answer call event
      * sets WebRTC signal to signal value
      */
-    socket.on('answercall', (signal) => {
+    socket.on('answerCall', (signal) => {
       setCallAccepted(true);
-
       peer.signal(signal);
     });
     connectionRef.current = peer;
@@ -155,7 +164,7 @@ const ContextProvider = ({children}) => {
       callEnded,
       currentUserVideo,
       externalUserVideo,
-      currentUserStream,
+      currentUserStream: stream,
       currentUserName,
       currentUser,
       setCurrentUserName,
